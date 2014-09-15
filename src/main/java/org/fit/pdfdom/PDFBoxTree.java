@@ -113,8 +113,9 @@ public abstract class PDFBoxTree extends PDFTextStripper
     
     public PDFBoxTree() throws IOException
     {
-        super.setSortByPosition(true);
-        super.setSuppressDuplicateOverlappingText(true);
+        super.setSortByPosition(false);
+        super.setSuppressDuplicateOverlappingText(false);
+        super.setForceParsing(true);
         init();
     }
 
@@ -318,8 +319,11 @@ public abstract class PDFBoxTree extends PDFTextStripper
             throws IOException
     {
         String operation = operator.getOperation();
-        //System.out.println("Operator: " + operation + ":" + arguments.size());
+        System.out.println("Operator: " + operation + ":" + arguments.size());
 
+        if (operation.equals("TJ"))
+            System.out.println("jo!");
+        
         //set gray for nonstroking operations
         if (operation.equals("g"))
         {
@@ -765,4 +769,9 @@ public abstract class PDFBoxTree extends PDFTextStripper
             return Character.DIRECTIONALITY_UNDEFINED;
     }
     
+    public void processEncodedText( byte[] string ) throws IOException
+    {
+        System.out.println("String: " + string.length);
+        super.processEncodedText(string);
+    }
 }
