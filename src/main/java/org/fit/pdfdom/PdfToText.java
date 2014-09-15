@@ -17,7 +17,7 @@ public class PdfToText
         PDDocument pddDocument;
         try
         {
-            pddDocument = PDDocument.load(new File("test/pdf/arabic/ar1.pdf"));
+            pddDocument = PDDocument.load(new File("test/pdf/arabic/arw1.pdf"));
             PDFTextStripper textStripper = new PDFTextStripper();
             textStripper.setSuppressDuplicateOverlappingText(false);
             String Text = textStripper.getText(pddDocument);

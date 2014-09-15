@@ -39,6 +39,7 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageNode;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.common.PDStream;
+import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.graphics.xobject.PDJpeg;
 import org.apache.pdfbox.pdmodel.graphics.xobject.PDXObject;
 import org.apache.pdfbox.pdmodel.graphics.xobject.PDXObjectImage;
@@ -772,6 +773,17 @@ public abstract class PDFBoxTree extends PDFTextStripper
     public void processEncodedText( byte[] string ) throws IOException
     {
         System.out.println("String: " + string.length);
+        final PDFont font = getGraphicsState().getTextState().getFont();
+        int codeLength = 1;
+        for( int i=0; i<string.length; i+=codeLength)
+        {
+            // Decode the value to a Unicode character
+            codeLength = 1;
+            String c = font.encode( string, i, codeLength );
+            System.out.println("C: " + c + " " + inspectFontEncoding(c));
+        }
+        
+        
         super.processEncodedText(string);
     }
 }
