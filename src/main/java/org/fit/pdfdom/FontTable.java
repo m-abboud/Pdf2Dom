@@ -107,10 +107,25 @@ public class FontTable extends HashMap<String, FontTable.Entry>
 
         private byte[] loadTrueTypeFont(PDStream fontFile) throws IOException
         {
-            // otf/OpenType/ttf/TrueType can be used as is by browsers, could convert to WOFF though for
-            // optimal html output.
+            // could convert to WOFF though for optimal html output.
             mimeType = "x-font-truetype";
-            return fontFile.toByteArray();
+
+            byte[] fontData = fontFile.toByteArray();
+            try
+            {
+                // browser validation can fail for many TTF fonts from pdfs
+                FVFont font = FontVerter.readFont(fontData);
+                if (!font.doesPassStrictValidation())
+                {
+                    font.normalize();
+                    fontData = font.getData();
+                }
+            } catch (Exception ex)
+            {
+                ex.printStackTrace();
+            }
+
+            return fontData;
         }
 
         private byte[] loadType1Font(PDStream fontFile) throws IOException
