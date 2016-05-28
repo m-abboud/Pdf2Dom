@@ -26,7 +26,7 @@ public class PDFFontExtractor extends PDFTextStripper
     {
         String extractPath = "extracted-pdf-fonts/";
 
-        File pdf = new File("chev-manual.pdf");
+        File pdf = new File("C:\\projects\\Pdf2Dom\\src\\test\\resources\\brno30.pdf");
 //        File pdf = new File("C:\\temp-downloads");
         if (pdf.isDirectory())
         {
@@ -138,9 +138,10 @@ public class PDFFontExtractor extends PDFTextStripper
             PDCIDFont descendantFont = ((PDType0Font) font).getDescendantFont();
             if (descendantFont instanceof PDCIDFontType2)
             {
-                log.info("Skipped: " + font.getName() + " type2");
+                fontStream = fontDesc.getFontFile2();
+                fileEnding = ".ttf";
             } else
-                log.info("Skipped: " + font.getName() + " type0");
+                log.warn("Skipped: " + font.getName() + " type0");
         } else if (font instanceof PDType1CFont)
         {
             fontStream = fontDesc.getFontFile3();

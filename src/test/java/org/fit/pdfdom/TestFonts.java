@@ -64,4 +64,15 @@ public class TestFonts
 
         Assert.assertThat(divStyle, containsString("font-family:"));
     }
+    @Test
+    public void convertPdfWitsashTtfFonts() throws Exception
+    {
+        // !todo! volvo manual replace with actual test pdf before pull request/merge!
+        Document html = TestUtils.parseWithPdfDomTree("/brno30.pdf");
+
+        Element div = html.select("div.p").get(0);
+        String divStyle = div.attr("style");
+
+        Assert.assertThat(divStyle, containsString("font-family:"));
+    }
 }
