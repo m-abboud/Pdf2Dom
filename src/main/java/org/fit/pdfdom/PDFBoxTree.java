@@ -24,6 +24,7 @@ import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
@@ -70,6 +71,7 @@ import org.apache.pdfbox.pdmodel.graphics.state.RenderingMode;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
 import org.apache.pdfbox.util.Matrix;
+import org.codehaus.plexus.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static org.apache.pdfbox.pdmodel.graphics.state.RenderingMode.*;
@@ -374,18 +376,22 @@ public abstract class PDFBoxTree extends PDFTextStripper
             if (font instanceof PDTrueTypeFont)
             {
                 table.addEntry(font.getName(), font.getFontDescriptor());
-                log.debug("Font: " + font.getName() + " TTF");
+                log.info("Font: " + font.getName() + " TTF");
             }
             else if (font instanceof PDType0Font)
             {
                 PDCIDFont descendantFont = ((PDType0Font) font).getDescendantFont();
-                if (descendantFont instanceof PDCIDFontType2)
-                    table.addEntry(font.getName(), descendantFont.getFontDescriptor());
+                if (descendantFont instanceof PDCIDFontType2) {
+                    table.addEntry(font.getName(), font);
+                    log.info("Font: " + font.getName() + " Type0 TTF #" + ((PDCIDFontType2)descendantFont).getTrueTypeFont().getNumberOfGlyphs());
+                }
                 else
                     log.warn(fontNotSupportedMessage, font.getName(), font.getClass().getSimpleName());
             }
-            else if (font instanceof PDType1CFont)
+            else if (font instanceof PDType1CFont) {
                 table.addEntry(font.getName(), font.getFontDescriptor());
+                log.info("Font: " + font.getName() + " CFF");
+            }
             else
                 log.warn(fontNotSupportedMessage, font.getName(), font.getClass().getSimpleName());
         }

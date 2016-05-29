@@ -3,13 +3,16 @@
  */
 package org.fit.pdfdom;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
-
 import org.apache.pdfbox.pdmodel.common.PDStream;
+import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDFontDescriptor;
+import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.mabb.fontverter.FVFont;
 import org.mabb.fontverter.FontVerter;
+import org.mabb.fontverter.pdf.PdfFontExtractor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +35,20 @@ public class FontTable extends HashMap<String, FontTable.Entry>
             String usedName = nextUsedName();
             FontTable.Entry newEntry = new FontTable.Entry(fontName, usedName, descriptor);
 
-            if(newEntry.isEntryValid())
+            if (newEntry.isEntryValid())
+                put(fontName, newEntry);
+        }
+    }
+
+    public void addEntry(String fontName, PDFont font)
+    {
+        FontTable.Entry entry = get(fontName);
+        if (entry == null)
+        {
+            String usedName = nextUsedName();
+            FontTable.Entry newEntry = new FontTable.Entry(fontName, usedName, font);
+
+            if (newEntry.isEntryValid())
                 put(fontName, newEntry);
         }
     }
@@ -53,6 +69,7 @@ public class FontTable extends HashMap<String, FontTable.Entry>
 
     public class Entry
     {
+        private PDFont baseFont;
         public String fontName;
         public String usedName;
         public PDFontDescriptor descriptor;
@@ -67,6 +84,14 @@ public class FontTable extends HashMap<String, FontTable.Entry>
             this.descriptor = descriptor;
         }
 
+        public Entry(String fontName, String usedName, PDFont font)
+        {
+            this.fontName = fontName;
+            this.usedName = usedName;
+            this.descriptor = font.getFontDescriptor();
+            this.baseFont = font;
+        }
+
         public String getDataURL() throws IOException
         {
             char[] cdata = new char[0];
@@ -76,23 +101,8 @@ public class FontTable extends HashMap<String, FontTable.Entry>
             return String.format("data:application/%s;base64,%s", mimeType, new String(cdata));
         }
 
-        public byte[] getFontData() throws IOException
+        public boolean isEntryValid()
         {
-            if (cachedFontData != null)
-                return cachedFontData;
-
-            if (descriptor.getFontFile2() != null)
-                cachedFontData = loadTrueTypeFont(descriptor.getFontFile2());
-            else if (descriptor.getFontFile() != null)
-                cachedFontData = loadType1Font(descriptor.getFontFile());
-            else if (descriptor.getFontFile3() != null)
-                // FontFile3 docs say any font type besides TTF/OTF or Type 1..
-                cachedFontData = loadOtherTypeFont(descriptor.getFontFile3());
-
-            return cachedFontData;
-        }
-
-        public boolean isEntryValid() {
             byte[] fontData = new byte[0];
             try
             {
@@ -105,32 +115,81 @@ public class FontTable extends HashMap<String, FontTable.Entry>
             return fontData != null && fontData.length != 0;
         }
 
+        public byte[] getFontData() throws IOException
+        {
+            if (cachedFontData != null)
+                return cachedFontData;
+
+            if (descriptor.getFontFile2() != null && baseFont instanceof PDType0Font)
+                cachedFontData = loadType0TtfDescendantFont();
+            else if (descriptor.getFontFile2() != null)
+                cachedFontData = loadTrueTypeFont(descriptor.getFontFile2());
+            else if (descriptor.getFontFile() != null)
+                cachedFontData = loadType1Font(descriptor.getFontFile());
+            else if (descriptor.getFontFile3() != null)
+                // FontFile3 docs say any font type besides TTF/OTF or Type 1..
+                cachedFontData = loadOtherTypeFont(descriptor.getFontFile3());
+
+            return cachedFontData;
+        }
+
         private byte[] loadTrueTypeFont(PDStream fontFile) throws IOException
         {
             // could convert to WOFF though for optimal html output.
             mimeType = "x-font-truetype";
 
             byte[] fontData = fontFile.toByteArray();
+
+            FVFont font = FontVerter.readFont(fontData);
+            byte[] fvFontData = tryNormalizeFVFont(font);
+            if (fvFontData.length != 0)
+                fontData = fvFontData;
+
+            return fontData;
+        }
+
+        private byte[] loadType0TtfDescendantFont() throws IOException
+        {
+            mimeType = "x-font-truetype";
+            try
+            {
+                FVFont font = PdfFontExtractor.convertType0FontToOpenType((PDType0Font) baseFont);
+                byte[] fontData = tryNormalizeFVFont(font);
+
+                if (fontData.length != 0)
+                    return fontData;
+            } catch (Exception ex)
+            {
+                ex.printStackTrace();
+                log.warn("Error loading type 0 with ttf descendant font '{}' Message: {} {}",
+                        fontName, ex.getMessage(), ex.getClass());
+
+            }
+
+            return descriptor.getFontFile2().toByteArray();
+        }
+
+        private byte[] loadType1Font(PDStream fontFile) throws IOException
+        {
+            log.warn("Type 1 fonts are not supported by Pdf2Dom.");
+            return new byte[0];
+        }
+
+        private byte[] tryNormalizeFVFont(FVFont font)
+        {
             try
             {
                 // browser validation can fail for many TTF fonts from pdfs
-                FVFont font = FontVerter.readFont(fontData);
                 if (!font.doesPassStrictValidation())
                 {
                     font.normalize();
-                    fontData = font.getData();
+                    return font.getData();
                 }
             } catch (Exception ex)
             {
                 ex.printStackTrace();
             }
 
-            return fontData;
-        }
-
-        private byte[] loadType1Font(PDStream fontFile) throws IOException
-        {
-            log.warn("Type 1 fonts are not supported by Pdf2Dom.");
             return new byte[0];
         }
 
@@ -144,7 +203,8 @@ public class FontTable extends HashMap<String, FontTable.Entry>
                 mimeType = "x-font-woff";
 
                 return font.getData();
-            } catch (Exception ex) {
+            } catch (Exception ex)
+            {
                 log.error("Issue converting Bare CFF font or the font type is not supportedby Pdf2Dom, " +
                         "Font: {} Exception: {} {}", fontName, ex.getMessage(), ex.getClass());
 
@@ -170,8 +230,7 @@ public class FontTable extends HashMap<String, FontTable.Entry>
             if (fontName == null)
             {
                 if (other.fontName != null) return false;
-            }
-            else if (!fontName.equals(other.fontName)) return false;
+            } else if (!fontName.equals(other.fontName)) return false;
             return true;
         }
 

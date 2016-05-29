@@ -22,8 +22,8 @@ public class TestUtils
         InputStream is = TestUtils.class.getResourceAsStream(resource);
         Document doc = parseWithPdfDomTree(is);
         is.close();
-         File debugOutFile = new File(resource.replace(".pdf", ".html").replaceAll(".*/",""));
-         FileUtils.write(debugOutFile, doc.outerHtml());
+//         File debugOutFile = new File(resource.replace(".pdf", ".html").replaceAll(".*/",""));
+//         FileUtils.write(debugOutFile, doc.outerHtml());
 
         return doc;
     }
